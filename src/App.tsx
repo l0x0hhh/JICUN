@@ -7,7 +7,10 @@ import { useEffect, useRef, useState } from 'react'
 import { dict, type Copy, type Lang } from './i18n'
 
 // APK 发布后只需要替换这里，页面中的下载按钮会同步更新。
-const DOWNLOAD_URL = 'https://github.com/l0x0hhh/zongce/releases'
+// DOWNLOAD_URL 指向 Gitee 国内镜像的直链 APK（不走 GitHub），点一下即从国内 CDN 下载。
+// ⚠️ 每次发新版都要把这里的版本号一起改掉，否则会继续下旧包：
+//    https://gitee.com/l0x0hhh/Jicun/releases/download/v<版本>/jicun-<版本>.apk
+const DOWNLOAD_URL = 'https://gitee.com/l0x0hhh/Jicun/releases/download/v1.2.1/jicun-1.2.1.apk'
 const REPO_URL = 'https://github.com/l0x0hhh/zongce'
 const README_URL = 'https://github.com/l0x0hhh/zongce/blob/main/README.md'
 const LICENSE_URL = 'https://github.com/l0x0hhh/zongce/blob/main/LICENSE'

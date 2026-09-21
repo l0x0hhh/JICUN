@@ -7,7 +7,7 @@
 - 技术栈：Vite · React 19 · TypeScript · motion（滚动视差）· lucide-react（图标）
 - 样式：全部在 `src/styles.css`，无 CSS 框架、无预处理器
 - 字体：**全部自托管**，不请求 Google Fonts（国内访问慢或被墙时会拖住首屏）
-- 页面上的下载按钮指向 App 仓库的 Releases
+- 页面上的下载按钮指向 **Gitee 国内镜像的 APK 直链**（不跳 GitHub，点一下即从国内 CDN 下载）
 
 > **独立项目声明**：暨存是个人独立项目，与任何学校或教育机构均无隶属关系。
 
@@ -50,7 +50,7 @@ vite.config.ts
 ## 常见修改位置
 
 - **改文案** → `src/i18n.ts` 的 `zh` 与 `en`。两份字典由 TypeScript 强制同构（`en` 的缺字段会直接编译报错）。切换语言时会同步 `<html lang>` 和标签页标题，选择记在 `localStorage['jicun-lang']`。
-- **改下载地址 / 外链** → `src/App.tsx` 顶部的 `DOWNLOAD_URL`、`REPO_URL`、`README_URL`、`LICENSE_URL`。APK 发布后只需改这里，页面上所有按钮和底栏链接会一起更新。
+- **改下载地址 / 外链** → `src/App.tsx` 顶部的 `DOWNLOAD_URL`、`REPO_URL`、`README_URL`、`LICENSE_URL`。APK 发布后只需改这里，页面上所有按钮和底栏链接会一起更新。**注意 `DOWNLOAD_URL` 是带版本号的直链**（形如 `https://gitee.com/l0x0hhh/Jicun/releases/download/v<版本>/jicun-<版本>.apk`），发新版时版本号要一起改，否则用户会继续下到旧包。
 - **改结构或样式** → `src/App.tsx` + `src/styles.css`。
 
 ## 字体（改文案后必看）
@@ -87,7 +87,7 @@ python scripts/subset-fonts.py 5174          # 也可以指定端口
 | 仓库 | 内容 |
 | --- | --- |
 | [`l0x0hhh/zongce`](https://github.com/l0x0hhh/zongce) | 暨存 Android App（Kotlin + Jetpack Compose + Room） |
-| 本仓库 | App 的产品页；下载按钮指向上面那个仓库的 Releases |
+| 本仓库 | App 的产品页；下载按钮指向 Gitee 国内镜像的 APK 直链 |
 
 两个仓库相互独立：本仓库不依赖 App 代码，也不需要 App 先构建。
 
