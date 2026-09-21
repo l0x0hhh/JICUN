@@ -1,0 +1,55 @@
+# 兜底同步：从 App 仓库的最新 Release 拉 APK，覆盖 public/downloads/jicun.apk。
+#
+# 为什么需要它：主路径是 App 发版时直接推过来（zongce 仓库 release.yml 里的
+# LANDING_TOKEN 那一步）。但那条路依赖一个跨仓库令牌，没配就不会跑；
+# 这个 workflow 用最笨也最稳的办法兜底——App 仓库是公开的，匿名读它的
+# Releases API 就行，不需要任何密钥。顺手也能在"忘了手动同步"时自愈。
+#
+# 注意：这里不要加 push 触发器，否则会和 Netlify 自动部署相互触发、绕圈。
+name: Sync APK
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 每天 01:17 UTC（北京时间 09:17）检查一次。
+    - cron: '17 1 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Download the latest APK from the app repo
+        run: |
+          set -euo pipefail
+          API="https://api.github.com/repos/l0x0hhh/zongce/releases/latest"
+          JSON=$(curl -sS --retry 3 --retry-delay 5 --connect-timeout 30 "$API")
+          TAG=$(echo "$JSON" | jq -r '.tag_name // empty')
+          URL=$(echo "$JSON" | jq -r '[.assets[]? | select(.name | endswith(".apk"))][0].browser_download_url // empty')
+          if [ -z "$TAG" ] || [ -z "$URL" ]; then
+            echo "::error::读不到 App 仓库的最新 Release 或其中的 APK 资产"
+            exit 1
+          fi
+          echo "App 最新版本：${TAG}"
+          mkdir -p public/downloads
+          curl -sSL --retry 3 --retry-delay 5 --connect-timeout 30 \
+            -o public/downloads/jicun.apk "$URL"
+          ls -l public/downloads/jicun.apk
+
+      - name: Commit if the APK changed
+        run: |
+          set -euo pipefail
+          if [ -z "$(git status --porcelain -- public/downloads/jicun.apk)" ]; then
+            echo "已经是最新，无需提交。"
+            exit 0
+          fi
+          git config user.name "apk-sync"
+          git config user.email "apk-sync@users.noreply.github.com"
+          git add public/downloads/jicun.apk
+          git commit -m "chore: sync the latest APK from the app releases"
+          git push

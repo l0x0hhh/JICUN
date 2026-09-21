@@ -7,7 +7,8 @@
 - 技术栈：Vite · React 19 · TypeScript · motion（滚动视差）· lucide-react（图标）
 - 样式：全部在 `src/styles.css`，无 CSS 框架、无预处理器
 - 字体：**全部自托管**，不请求 Google Fonts（国内访问慢或被墙时会拖住首屏）
-- 页面上的下载按钮指向**落地页自己托管的 APK**（`public/downloads/jicun.apk`）：同源直下、无中转页，也不跳 GitHub / Gitee
+- 页面上的下载按钮指向**本站自己托管的 APK**（`public/downloads/jicun.apk`）：同源直下、无中转页，也不跳 GitHub / Gitee
+- **安装包会自动更新**：App 发版时会直接推到本仓库（主路径，见 zongce 仓库的 `LANDING_TOKEN`）；另有 `.github/workflows/sync-apk.yml` 每天兜底拉一次最新包
 
 > **独立项目声明**：暨存是个人独立项目，与任何学校或教育机构均无隶属关系。
 
@@ -50,8 +51,9 @@ vite.config.ts
 ## 常见修改位置
 
 - **改文案** → `src/i18n.ts` 的 `zh` 与 `en`。两份字典由 TypeScript 强制同构（`en` 的缺字段会直接编译报错）。切换语言时会同步 `<html lang>` 和标签页标题，选择记在 `localStorage['jicun-lang']`。
-- **改下载地址 / 外链** → `src/App.tsx` 顶部的 `DOWNLOAD_URL`、`REPO_URL`、`README_URL`、`LICENSE_URL`。**`DOWNLOAD_URL` 指向站内文件 `/downloads/jicun.apk`，发新版时不需要改**：只要把新构建的 APK 覆盖 `public/downloads/jicun.apk`（保持同名），提交推送、Netlify 重新部署即可。
+- **改下载地址 / 外链** → `src/App.tsx` 顶部的 `DOWNLOAD_URL`、`REPO_URL`、`README_URL`、`LICENSE_URL`。**`DOWNLOAD_URL` 指向站内文件 `/downloads/jicun.apk`，发新版时不需要改**——安装包会自动同步（见下），正常情况不用手动碰它。
 - **APK 为什么自托管、不链到 Release 页**：安卓浏览器判断"是不是安装包"只看响应头 `Content-Type`。第三方图床/CDN（例如 Gitee 的附件）会把 `.apk` 标成 `application/zip`，浏览器就存成 `xxx.zip`，用户还得手动改后缀；手机端还可能多一个中转页。因此在 `netlify.toml` 里为 `/downloads/*` 强制声明 `Content-Type: application/vnd.android.package-archive` 与 `Content-Disposition: attachment`。
+- **安装包的自动同步**：两条路，互为兜底。① 主路径——App 仓库发版时，其 `release.yml` 会把 APK 直接推入本仓库的 `public/downloads/jicun.apk`（需要 App 仓库配 `LANDING_TOKEN`，没配则跳过）；② 兜底——本仓库的 `.github/workflows/sync-apk.yml` 每天（北京时间 09:17）从 App 最新 Release 拉一次，也可在 Actions 里手动触发。App 仓库是公开的，所以兜底这条**不需要任何密钥**。
 - **改结构或样式** → `src/App.tsx` + `src/styles.css`。
 
 ## 字体（改文案后必看）
