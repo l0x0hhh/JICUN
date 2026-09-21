@@ -6,11 +6,12 @@ import { motion, useReducedMotion, useScroll, useSpring, useTransform, type Moti
 import { useEffect, useRef, useState } from 'react'
 import { dict, type Copy, type Lang } from './i18n'
 
-// APK 发布后只需要替换这里，页面中的下载按钮会同步更新。
-// DOWNLOAD_URL 指向 Gitee 国内镜像的直链 APK（不走 GitHub），点一下即从国内 CDN 下载。
-// ⚠️ 每次发新版都要把这里的版本号一起改掉，否则会继续下旧包：
-//    https://gitee.com/l0x0hhh/Jicun/releases/download/v<版本>/jicun-<版本>.apk
-const DOWNLOAD_URL = 'https://gitee.com/l0x0hhh/Jicun/releases/download/v1.2.1/jicun-1.2.1.apk'
+// DOWNLOAD_URL 指向落地页自己托管的 APK（同源，不跳任何外站）。
+// 为什么不用 Gitee 直链：Gitee 附件 CDN 返回 Content-Type: application/zip，
+// 安卓浏览器会据此把文件存成 .zip；且手机端还会多一个中转页。
+// 自托管 + netlify.toml 里声明 application/vnd.android.package-archive 才能保证下载到 .apk。
+// 发新版只需用新包覆盖 public/downloads/jicun.apk，这个常量不用改。
+const DOWNLOAD_URL = '/downloads/jicun.apk'
 const REPO_URL = 'https://github.com/l0x0hhh/zongce'
 const README_URL = 'https://github.com/l0x0hhh/zongce/blob/main/README.md'
 const LICENSE_URL = 'https://github.com/l0x0hhh/zongce/blob/main/LICENSE'

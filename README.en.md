@@ -7,7 +7,7 @@ A purely static single page (Vite + React + TypeScript). **No backend is needed 
 - Stack: Vite · React 19 · TypeScript · motion (scroll parallax) · lucide-react (icons)
 - Styling: everything lives in `src/styles.css` — no CSS framework, no preprocessor
 - Fonts: **fully self-hosted**, no requests to Google Fonts (slow or blocked from mainland China, and it would hold up first paint)
-- The download buttons point at the **direct APK link on the Gitee mirror** (no GitHub round-trip — one click downloads from a mainland-China CDN)
+- The download buttons point at an **APK hosted by this site itself** (`public/downloads/jicun.apk`): same-origin direct download, no interstitial page, no jump to GitHub or Gitee
 
 > **Independent project notice**: JICUN is an independent personal project with no affiliation to any school or educational institution.
 
@@ -50,7 +50,8 @@ vite.config.ts
 ## Where to change things
 
 - **Copy** → `zh` and `en` in `src/i18n.ts`. TypeScript forces the two dictionaries to stay structurally identical (a missing key in `en` is a compile error). Switching language also syncs `<html lang>` and the page title, and the choice is remembered in `localStorage['jicun-lang']`.
-- **Download URL / outbound links** → `DOWNLOAD_URL`, `REPO_URL`, `README_URL`, `LICENSE_URL` at the top of `src/App.tsx`. Once an APK is published, this is the only place to edit — every button and footer link follows. **`DOWNLOAD_URL` is a versioned direct link** (`https://gitee.com/l0x0hhh/Jicun/releases/download/v<version>/jicun-<version>.apk`), so bump the version in it on every release, or users keep downloading the old APK.
+- **Download URL / outbound links** → `DOWNLOAD_URL`, `REPO_URL`, `README_URL`, `LICENSE_URL` at the top of `src/App.tsx`. **`DOWNLOAD_URL` points at the in-site file `/downloads/jicun.apk`, so you never edit it on a release** — just overwrite `public/downloads/jicun.apk` with the new build (same filename), commit, and let Netlify redeploy.
+- **Why the APK is self-hosted instead of linking a Releases page**: Android browsers decide "is this an installer?" purely from the response `Content-Type`. Third-party file hosts/CDNs (Gitee attachments, for example) label `.apk` as `application/zip`, so the browser saves `xxx.zip` and users must rename it; mobile may also show an interstitial page. That is why `netlify.toml` forces `Content-Type: application/vnd.android.package-archive` and `Content-Disposition: attachment` for `/downloads/*`.
 - **Structure or styling** → `src/App.tsx` + `src/styles.css`.
 
 ## Fonts (read this after editing copy)
@@ -87,7 +88,7 @@ If you deploy under a **sub-path** (for example GitHub Pages at `https://<user>.
 | Repository | Contents |
 | --- | --- |
 | [`l0x0hhh/zongce`](https://github.com/l0x0hhh/zongce) | The JICUN Android app (Kotlin + Jetpack Compose + Room) |
-| This repository | The app's product page; its download buttons point at the direct APK link on the Gitee mirror |
+| This repository | The app's product page; the APK is hosted here too (`public/downloads/jicun.apk`) |
 
 The two are independent: this repository does not depend on the app's code, and does not need the app to be built first.
 
