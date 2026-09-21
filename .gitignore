@@ -1,0 +1,13 @@
+# Node/Vite ignores: keep dependencies, build output and local caches out of Git.
+node_modules/
+dist/
+.vite/
+*.local
+
+# Logs and editor/OS files.
+*.log
+npm-debug.log*
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
