@@ -4,6 +4,10 @@ dist/
 .vite/
 *.local
 
+# Python bytecode (scripts/).
+__pycache__/
+*.pyc
+
 # Logs and editor/OS files.
 *.log
 npm-debug.log*
