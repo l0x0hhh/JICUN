@@ -1,0 +1,26 @@
+# Netlify 构建设置。
+# 只在「连接 Git 仓库、由 Netlify 自动构建」时生效；
+# 如果是手动把 dist 文件夹拖到 Netlify Drop，用不到这个文件。
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # vite 8 要求 node ^20.19.0 || >=22.12.0，显式钉住，避免 Netlify 默认 Node 版本过旧导致构建失败。
+  NODE_VERSION = "22"
+
+# 注意：npm run build = tsc -b && vite build，类型检查依赖 devDependencies。
+# Netlify 默认会安装 devDependencies，但如果你在环境变量里设了 NODE_ENV=production，
+# 它们会被跳过、tsc 找不到，构建直接失败。
+
+# 单页站点，没有客户端路由，因此不需要 SPA 重定向规则（_redirects / [[redirects]]）。
+# 页面对 /logo.png、/fonts/*、/favicon* 用的是绝对路径：
+#   部署在域名根（xxx.netlify.app 或自定义域名）无需任何配置；
+#   若要部署到子路径，需要给 vite.config.ts 加 base，否则这些路径会 404。
+
+# Vite 产出的 /assets/* 文件名带内容哈希，可以放心长期缓存。
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
