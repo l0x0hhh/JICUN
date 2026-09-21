@@ -77,7 +77,14 @@ def fetch(url: str) -> str:
         return r.read().decode("utf-8")
 
 
-def grab(css: str, prefix: str) -> list[str]:
+def referenced_fonts() -> set[str]:
+    """styles.css 里 @font-face 真正加载的文件名。生成的文件名必须落在这个集合里，
+    否则新下下来的子集只是躺在 public/fonts/ 里当孤儿，页面还在用旧文件。"""
+    css = (ROOT / "src" / "styles.css").read_text(encoding="utf-8")
+    return set(re.findall(r"/fonts/([\w.\-]+\.woff2)", css))
+
+
+def grab(css: str, prefix: str, single: bool = False) -> list[str]:
     saved: list[str] = []
     seen: dict[str, str] = {}
     for block in re.findall(r"@font-face\s*\{[\s\S]*?\}", css):
@@ -87,10 +94,12 @@ def grab(css: str, prefix: str) -> list[str]:
             continue
         w = weight.group(1).strip().replace(" ", "-") if weight else "400"
         url = url.group(1)
+        # single=True 用于变量字体：一个文件服务全部字重，文件名不带字重后缀（与 styles.css 对齐）。
+        name = f"{prefix}.woff2" if single else f"{prefix}-{w}.woff2"
         if url in seen:  # 变量字体同一个文件服务多个字重，只存一份
             saved.append(f"{seen[url]}  (weight {w} 复用同一文件)")
             continue
-        out = FONTS / f"{prefix}-{w}.woff2"
+        out = FONTS / name
         req = urllib.request.Request(url, headers={"User-Agent": UA})
         with urllib.request.urlopen(req, timeout=120) as r:
             out.write_bytes(r.read())
@@ -115,7 +124,7 @@ def main() -> None:
         "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800"
         f"&display=swap&text={text_param}"
     )
-    for line in grab(noto, "noto-sans-sc"):
+    for line in grab(noto, "noto-sans-sc", single=True):
         print(" ", line)
 
     mono_text = urllib.parse.quote("".join(sorted(set(ASCII) | set("·—"))), safe="")
@@ -125,8 +134,19 @@ def main() -> None:
     for line in grab(mono, "space-mono"):
         print(" ", line)
 
+    # 自检：生成的文件必须正好等于 styles.css 引用的那批，多一个少一个都要报出来。
+    expected = referenced_fonts()
+    produced = {p.name for p in FONTS.glob("*.woff2")}
+    print(f"\nstyles.css 引用: {sorted(expected)}")
+    if expected != produced:
+        print("⚠️ 对不上，字体可能不生效：")
+        if produced - expected:
+            print(f"   多余（页面不会加载，删掉或改 styles.css）: {sorted(produced - expected)}")
+        if expected - produced:
+            print(f"   缺失（页面会 404 并回退系统字体）: {sorted(expected - produced)}")
+    else:
+        print("✓ 文件名与 styles.css 完全对应")
     print(f"完成，目录: {FONTS}")
-    print("styles.css 里 Noto Sans SC 声明为 font-weight: 400 800（单文件变量字体），换了文件名记得同步。")
 
 
 if __name__ == "__main__":
