@@ -1,0 +1,6 @@
+{
+  "version": "1.5.1",
+  "title": "暨存 v1.5.1",
+  "notes": "修复成果组件刷新；增加真实组件预览；更新弹窗展示完整说明。",
+  "apkUrl": "https://jicun.netlify.app/downloads/jicun.apk"
+}
