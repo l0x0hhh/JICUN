@@ -29,9 +29,15 @@
 # （Gitee 的附件 CDN 返回 application/zip，这正是不能拿它当下载源的原因。）
 # Content-Type 不在 Netlify 禁止覆盖的响应头名单里，可以这样强制指定。
 [[headers]]
-  for = "/downloads/*"
+  for = "/downloads/*.apk"
   [headers.values]
     Content-Type = "application/vnd.android.package-archive"
     Content-Disposition = "attachment"
     # 文件名固定为 jicun.apk、每次发版覆盖同一个文件，所以关掉强缓存，避免用户拿到旧包。
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/downloads/*.json"
+  [headers.values]
+    Content-Type = "application/json; charset=utf-8"
     Cache-Control = "public, max-age=0, must-revalidate"
