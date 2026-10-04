@@ -1,6 +1,6 @@
 {
   "version": "1.5.3",
-  "title": "暨存 1.5.3",
-  "notes": "本次版本包含功能改进和问题修复。",
+  "title": "暨存 v1.5.3",
+  "notes": "本次更新：\n- App 更新检查改用 Netlify 国内镜像清单，GitHub Release 保留为备用源。\n- 更新弹窗展示完整功能说明，长内容可滚动查看。\n- 修复成果组件刷新和系统选择器预览问题。",
   "apkUrl": "https://jicun.netlify.app/downloads/jicun.apk"
 }
