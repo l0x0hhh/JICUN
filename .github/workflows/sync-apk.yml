@@ -80,7 +80,7 @@ jobs:
         env:
           LIVE_MANIFEST_URL: ${{ vars.LIVE_MANIFEST_URL || 'https://jicun.netlify.app/downloads/latest.json' }}
           LIVE_APK_URL: ${{ vars.LIVE_APK_URL || 'https://jicun.netlify.app/downloads/jicun.apk' }}
-          NETLIFY_DEPLOY_HOOK: ${{ secrets.NETLIFY_DEPLOY_HOOK }}
+          SITE_DEPLOY_HOOK: ${{ secrets.SITE_DEPLOY_HOOK }}
         run: |
           set -uo pipefail
           V=$(jq -r '.version // empty' public/downloads/latest.json)
@@ -108,13 +108,13 @@ jobs:
           fi
 
           echo "线上端点还不是 ${V}，开始处理。"
-          if [ -z "${NETLIFY_DEPLOY_HOOK}" ]; then
-            echo "::warning::没有配置 NETLIFY_DEPLOY_HOOK，无法主动触发部署。若站点没接 Git 自动部署，这里会一直报错。"
+          if [ -z "${SITE_DEPLOY_HOOK}" ]; then
+            echo "::warning::没有配置 SITE_DEPLOY_HOOK，无法主动触发部署。若站点没接 Git 自动部署，这里会一直报错。"
           else
             CODE=$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
               --connect-timeout 30 --max-time 120 --retry 3 --retry-delay 10 \
-              "${NETLIFY_DEPLOY_HOOK}") || CODE="000"
-            echo "Netlify build hook 返回 HTTP ${CODE}"
+              "${SITE_DEPLOY_HOOK}") || CODE="000"
+            echo "站点 build hook 返回 HTTP ${CODE}"
           fi
 
           for attempt in $(seq 1 12); do
