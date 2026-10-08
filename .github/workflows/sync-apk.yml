@@ -126,4 +126,5 @@ jobs:
             echo "第 ${attempt} 次回读：线上端点仍是旧版本。"
           done
           echo "::error::线上端点 ${LIVE_MANIFEST_URL} 三分钟后仍不是 ${V}。用户从产品页下载、以及国内镜像的更新检查，读到的都会是旧版本。"
+          echo "::error::常见原因：站点的生产部署被跳过（仓库收到了推送、Deploys 里却是一条 Skipped，Netlify 在额度/计费用尽时会这样）。请到站点的 Deploys 面板确认。"
           exit 1
