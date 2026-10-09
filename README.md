@@ -7,7 +7,7 @@
 - 技术栈：Vite · React 19 · TypeScript · motion（滚动视差）· lucide-react（图标）
 - 样式：全部在 `src/styles.css`，无 CSS 框架、无预处理器
 - 字体：**全部自托管**，不请求 Google Fonts（国内访问慢或被墙时会拖住首屏）
-- 页面上的下载按钮指向**本站自己托管的 APK**（`public/downloads/jicun.apk`）：同源直下、无中转页，也不跳 GitHub / Gitee
+- 页面上的下载按钮指向**本站自己托管的 APK**（`public/downloads/jicun.apk`），随部署基路径生成，并用 `download="jicun.apk"` 指定文件名。
 - **安装包会自动更新**：App 发版时会直接推到本仓库（主路径，见 zongce 仓库的 `LANDING_TOKEN`）；另有 `.github/workflows/sync-apk.yml` 每天兜底拉一次最新包
 
 > **独立项目声明**：暨存是个人独立项目，与任何学校或教育机构均无隶属关系。
@@ -51,8 +51,8 @@ vite.config.ts
 ## 常见修改位置
 
 - **改文案** → `src/i18n.ts` 的 `zh` 与 `en`。两份字典由 TypeScript 强制同构（`en` 的缺字段会直接编译报错）。切换语言时会同步 `<html lang>` 和标签页标题，选择记在 `localStorage['jicun-lang']`。
-- **改下载地址 / 外链** → `src/App.tsx` 顶部的 `DOWNLOAD_URL`、`REPO_URL`、`README_URL`、`LICENSE_URL`。**`DOWNLOAD_URL` 指向站内文件 `/downloads/jicun.apk`，发新版时不需要改**——安装包会自动同步（见下），正常情况不用手动碰它。
-- **APK 为什么自托管、不链到 Release 页**：安卓浏览器判断"是不是安装包"只看响应头 `Content-Type`。第三方图床/CDN（例如 Gitee 的附件）会把 `.apk` 标成 `application/zip`，浏览器就存成 `xxx.zip`，用户还得手动改后缀；手机端还可能多一个中转页。因此在 `netlify.toml` 里为 `/downloads/*` 强制声明 `Content-Type: application/vnd.android.package-archive` 与 `Content-Disposition: attachment`。
+- **改下载地址 / 外链** → `src/App.tsx` 顶部的 `DOWNLOAD_URL`、`REPO_URL`、`README_URL`、`LICENSE_URL`。`DOWNLOAD_URL` 用 `import.meta.env.BASE_URL` 拼接站内安装包路径，发新版无需修改。
+- **APK 下载兼容性**：Netlify 可在 `netlify.toml` 中设置 APK 响应头；Pages 不读取这个文件。Pages 使用同源 `.apk` 链接和 `download` 文件名提示，仍需要在目标 Android 浏览器上实测文件后缀及安装。Gitee 附件的响应类型与文件名也需分别验证，不能仅凭 `application/zip` 判断安装一定失败。
 - **安装包的自动同步**：两条路，互为兜底。① 主路径——App 仓库发版时，其 `release.yml` 会把 APK 直接推入本仓库的 `public/downloads/jicun.apk`（需要 App 仓库配 `LANDING_TOKEN`，没配则跳过）；② 兜底——本仓库的 `.github/workflows/sync-apk.yml` 每天（北京时间 09:17）从 App 最新 Release 拉一次，也可在 Actions 里手动触发。App 仓库是公开的，所以兜底这条**不需要任何密钥**。
 - **改结构或样式** → `src/App.tsx` + `src/styles.css`。
 
@@ -81,9 +81,31 @@ python scripts/subset-fonts.py 5174          # 也可以指定端口
 
 ## 部署
 
-**目前尚未部署。** 产物是纯静态文件（`dist/`），可以放到任意静态托管：对象存储 + CDN、Vercel / Netlify、GitHub Pages 等。
+主站目标地址：**https://l0x0hhh.github.io/JICUN/**。Netlify 地址保留供已有链接访问。
 
-如果部署在**子路径**下（例如 GitHub Pages 的 `https://<user>.github.io/<repo>/`），必须在 `vite.config.ts` 里设置 `base`，否则 `/logo.png`、`/fonts/*` 这类绝对路径会 404。
+在仓库 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**。
+`.github/workflows/deploy-pages.yml` 会在 `main` 推送时自动构建部署，也可手动运行。
+构建使用 Pages 元数据提供的基路径，Logo、图标、字体和 APK 均兼容 `/JICUN/`。
+工作流会检查 APK 结构，部署后回读清单并下载线上 APK 比对 SHA-256。
+
+APK 每日兜底同步后，会显式调用同一部署工作流。不能仅依靠同步提交的 `push` 事件，
+因为 `GITHUB_TOKEN` 推送不会触发另一条 `push` 工作流。App 仓库用 `LANDING_TOKEN`
+推送的新包仍由正常的 `push` 部署接收。
+
+源码中的 `public/downloads/latest.json` 为现有站点保留下载地址；Pages 构建产物会将
+`apkUrl` 改成实际 Pages 地址，并补齐 `sha256` 和 `size`，不修改源码清单。
+确认 Pages 上线后，App 仓库可设置 `LIVE_MANIFEST_URL` 和 `LIVE_APK_URL` 指向 Pages，
+用于发版后的官网交付检查。App 的 Gitee 更新源使用独立的 `APP_UPDATE_MANIFEST_URL`。
+
+本地验证：
+
+```powershell
+npm.cmd run build -- '--base=/JICUN/'
+npm.cmd run preview -- '--base=/JICUN/' --host 127.0.0.1
+# 打开 http://127.0.0.1:4173/JICUN/ ，检查中英文、Logo、字体和 APK 下载。
+```
+
+默认 `npm run build` 使用 `/`，可继续部署到域名根目录。
 
 ## 与 App 仓库的关系
 

@@ -1,0 +1,97 @@
+# 官网部署：源码推送和 APK 兜底同步都使用同一条 Pages 构建、发布及下载校验链路。
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.manifest.outputs.version }}
+      sha256: ${{ steps.manifest.outputs.sha256 }}
+    steps:
+      # 复用工作流时，APK 同步可能刚推送了新提交，需要读取 main 的最新内容。
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Build for the Pages base path
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        run: npm run build -- --base "${BASE_PATH}/"
+      - name: Prepare and validate the public update manifest
+        id: manifest
+        env:
+          SITE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          set -euo pipefail
+          APK=dist/downloads/jicun.apk
+          SHA=$(sha256sum "$APK" | cut -d' ' -f1)
+          SIZE=$(stat -c %s "$APK")
+          unzip -t "$APK" > /dev/null
+          unzip -Z1 "$APK" > "$RUNNER_TEMP/apk-files.txt"
+          grep -qx AndroidManifest.xml "$RUNNER_TEMP/apk-files.txt"
+          jq --arg apkUrl "${SITE_URL%/}/downloads/jicun.apk" \
+            --arg sha256 "$SHA" --argjson size "$SIZE" \
+            '.apkUrl = $apkUrl | .sha256 = $sha256 | .size = $size' \
+            public/downloads/latest.json > dist/downloads/latest.json
+          VERSION=$(jq -er '.version | select(type == "string" and length > 0)' dist/downloads/latest.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Verify the published manifest and APK
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          VERSION: ${{ needs.build.outputs.version }}
+          SHA256: ${{ needs.build.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          BASE="${PAGE_URL%/}/"
+          for attempt in $(seq 1 6); do
+            if curl -fsSL --connect-timeout 15 --max-time 60 \
+                "${BASE}downloads/latest.json?verify=${GITHUB_RUN_ID}-${attempt}" -o "$RUNNER_TEMP/latest.json" && \
+              jq -e --arg version "$VERSION" --arg apk "${BASE}downloads/jicun.apk" --arg sha "$SHA256" \
+                '.version == $version and .apkUrl == $apk and .sha256 == $sha' "$RUNNER_TEMP/latest.json" > /dev/null && \
+              curl -fsSL --connect-timeout 15 --max-time 120 \
+                "${BASE}downloads/jicun.apk?verify=${GITHUB_RUN_ID}-${attempt}" -o "$RUNNER_TEMP/live.apk" && \
+              echo "$SHA256  $RUNNER_TEMP/live.apk" | sha256sum -c -; then
+              echo "Pages 已交付版本 ${VERSION}，线上 APK SHA-256 校验通过。"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo '::error::Pages 发布后的清单或 APK 校验失败，请检查本次部署。'
+          exit 1

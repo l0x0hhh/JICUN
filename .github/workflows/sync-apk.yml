@@ -1,130 +1,65 @@
-# 兜底同步：从 App 仓库的最新 Release 拉 APK 和更新清单，覆盖 public/downloads/。
-#
-# 为什么需要它：主路径是 App 发版时直接推过来（zongce 仓库 release.yml 里的
-# LANDING_TOKEN 那一步）。但那条路依赖一个跨仓库令牌，没配就不会跑；
-# 这个 workflow 用最笨也最稳的办法兜底——App 仓库是公开的，匿名读它的
-# Releases API 就行，不需要任何密钥。顺手也能在"忘了手动同步"时自愈。
-#
-# 注意：这里不要加 push 触发器，否则会和 Netlify 自动部署相互触发、绕圈。
+# 兜底同步：读取一次最新 Release，校验 APK 后提交，并显式调用 Pages 部署工作流。
+# GITHUB_TOKEN 产生的推送不会触发另一条 push 工作流，所以部署必须接在同步任务后。
 name: Sync APK
 
 on:
   workflow_dispatch:
   schedule:
-    # 每天 01:17 UTC（北京时间 09:17）检查一次。
-    - cron: '17 1 * * *'
+    - cron: '17 1 * * *' # 每天北京时间 09:17。
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: apk-sync
+  cancel-in-progress: false
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: Check out source
-        uses: actions/checkout@v5
-
-      - name: Download the latest APK from the app repo
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - name: Download and validate the latest APK and manifest
+        env:
+          LIVE_APK_URL: ${{ vars.LIVE_APK_URL || 'https://jicun.netlify.app/downloads/jicun.apk' }}
         run: |
           set -euo pipefail
-          API="https://api.github.com/repos/l0x0hhh/zongce/releases/latest"
-          JSON=$(curl -sS --retry 3 --retry-delay 5 --connect-timeout 30 "$API")
-          TAG=$(echo "$JSON" | jq -r '.tag_name // empty')
-          URL=$(echo "$JSON" | jq -r '[.assets[]? | select(.name | endswith(".apk"))][0].browser_download_url // empty')
-          if [ -z "$TAG" ] || [ -z "$URL" ]; then
-            echo "::error::读不到 App 仓库的最新 Release 或其中的 APK 资产"
-            exit 1
-          fi
-          echo "App 最新版本：${TAG}"
+          JSON=$(curl -fsSL --retry 3 --connect-timeout 30 --max-time 60 \
+            https://api.github.com/repos/l0x0hhh/zongce/releases/latest)
+          TAG=$(echo "$JSON" | jq -er '.tag_name | select(type == "string" and length > 0)')
+          URL=$(echo "$JSON" | jq -er '[.assets[]? | select(.name | endswith(".apk"))][0].browser_download_url | select(type == "string" and length > 0)')
           mkdir -p public/downloads
-          curl -sSL --retry 3 --retry-delay 5 --connect-timeout 30 \
+          curl -fsSL --retry 3 --connect-timeout 30 --max-time 180 \
             -o public/downloads/jicun.apk "$URL"
-          ls -l public/downloads/jicun.apk
-
-      - name: Write the update manifest
-        run: |
-          set -euo pipefail
-          API="https://api.github.com/repos/l0x0hhh/zongce/releases/latest"
-          JSON=$(curl -sS --retry 3 --retry-delay 5 --connect-timeout 30 "$API")
-          TAG=$(echo "$JSON" | jq -r '.tag_name // empty')
-          VERSION="${TAG#v}"
-          NOTES=$(echo "$JSON" | jq -r '.body // ""')
-          TITLE=$(echo "$JSON" | jq -r '.name // "暨存更新"')
-          jq -n \
-            --arg version "$VERSION" \
-            --arg title "$TITLE" \
-            --arg notes "$NOTES" \
-            --arg apkUrl "https://jicun.netlify.app/downloads/jicun.apk" \
-            '{version: $version, title: $title, notes: $notes, apkUrl: $apkUrl}' \
+          unzip -t public/downloads/jicun.apk > /dev/null
+          unzip -Z1 public/downloads/jicun.apk > "$RUNNER_TEMP/apk-files.txt"
+          grep -qx AndroidManifest.xml "$RUNNER_TEMP/apk-files.txt"
+          SHA=$(sha256sum public/downloads/jicun.apk | cut -d' ' -f1)
+          SIZE=$(stat -c %s public/downloads/jicun.apk)
+          echo "$JSON" | jq --arg apkUrl "$LIVE_APK_URL" --arg sha256 "$SHA" --argjson size "$SIZE" \
+            '{version: (.tag_name | ltrimstr("v")), title: (.name // "暨存更新"), notes: (.body // ""), apkUrl: $apkUrl, sha256: $sha256, size: $size}' \
             > public/downloads/latest.json
-          cat public/downloads/latest.json
-
+          echo "同步版本：$TAG（$SIZE 字节，SHA-256 $SHA）"
       - name: Commit if the APK or manifest changed
         run: |
           set -euo pipefail
           if [ -z "$(git status --porcelain -- public/downloads/jicun.apk public/downloads/latest.json)" ]; then
-            echo "已经是最新，无需提交。"
+            echo '已经是最新，无需提交。'
             exit 0
           fi
-          git config user.name "apk-sync"
-          git config user.email "apk-sync@users.noreply.github.com"
+          git config user.name apk-sync
+          git config user.email apk-sync@users.noreply.github.com
           git add public/downloads/jicun.apk public/downloads/latest.json
-          git commit -m "chore: sync the latest APK and update manifest"
-          git push
+          git commit -m 'chore: sync the latest APK and update manifest'
+          git push origin HEAD:main
 
-      # 兜底原来只兜了「仓库」那一半：把文件提交上去就算完。
-      # 但用户读的是线上站点，而「仓库 → 站点」那一段恰恰是会断的
-      # （v1.5.5 就是这么在线上停了五天，仓库里是 1.5.5、线上还是 1.5.2）。
-      # 所以这里把闭环补上：先看线上对不对，不对就主动踢一次 Netlify 构建，再回读确认。
-      - name: Verify the live endpoint and repair the deploy if needed
-        env:
-          LIVE_MANIFEST_URL: ${{ vars.LIVE_MANIFEST_URL || 'https://jicun.netlify.app/downloads/latest.json' }}
-          LIVE_APK_URL: ${{ vars.LIVE_APK_URL || 'https://jicun.netlify.app/downloads/jicun.apk' }}
-          SITE_DEPLOY_HOOK: ${{ secrets.SITE_DEPLOY_HOOK }}
-        run: |
-          set -uo pipefail
-          V=$(jq -r '.version // empty' public/downloads/latest.json)
-          if [ -z "$V" ]; then
-            echo "::error::读不到 public/downloads/latest.json 里的 version"
-            exit 1
-          fi
-          LOCAL_SIZE=$(stat -c %s public/downloads/jicun.apk)
-          echo "仓库里的目标版本：${V}（APK ${LOCAL_SIZE} 字节）"
-
-          # 线上清单版本 + 线上 APK 字节数都要对上，才算用户真的能拿到。
-          check() {
-            curl -sSL -D "$RUNNER_TEMP/live.hdr" -o "$RUNNER_TEMP/live.body" \
-              --connect-timeout 30 --max-time 60 "${LIVE_MANIFEST_URL}" || true
-            grep -q "\"${V}\"" "$RUNNER_TEMP/live.body" 2>/dev/null || return 1
-            LIVE_SIZE=$(curl -sIL --connect-timeout 30 --max-time 60 "${LIVE_APK_URL}" 2>/dev/null \
-              | grep -i '^content-length:' | tail -1 | tr -d '\r' | sed 's/^[^:]*:[[:space:]]*//')
-            [ -n "$LIVE_SIZE" ] && [ "$LIVE_SIZE" = "$LOCAL_SIZE" ] || return 1
-            return 0
-          }
-
-          if check; then
-            echo "线上端点已经是 ${V}，无需干预。"
-            exit 0
-          fi
-
-          echo "线上端点还不是 ${V}，开始处理。"
-          if [ -z "${SITE_DEPLOY_HOOK}" ]; then
-            echo "::warning::没有配置 SITE_DEPLOY_HOOK，无法主动触发部署。若站点没接 Git 自动部署，这里会一直报错。"
-          else
-            CODE=$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
-              --connect-timeout 30 --max-time 120 --retry 3 --retry-delay 10 \
-              "${SITE_DEPLOY_HOOK}") || CODE="000"
-            echo "站点 build hook 返回 HTTP ${CODE}"
-          fi
-
-          for attempt in $(seq 1 12); do
-            sleep 15
-            if check; then
-              echo "第 ${attempt} 次回读：线上端点已更新到 ${V}。"
-              exit 0
-            fi
-            echo "第 ${attempt} 次回读：线上端点仍是旧版本。"
-          done
-          echo "::error::线上端点 ${LIVE_MANIFEST_URL} 三分钟后仍不是 ${V}。用户从产品页下载、以及国内镜像的更新检查，读到的都会是旧版本。"
-          echo "::error::常见原因：站点的生产部署被跳过（仓库收到了推送、Deploys 里却是一条 Skipped，Netlify 在额度/计费用尽时会这样）。请到站点的 Deploys 面板确认。"
-          exit 1
+  # 即使同步没有产生新提交，也可修复之前未成功发布的 Pages 部署。
+  deploy:
+    needs: sync
+    uses: ./.github/workflows/deploy-pages.yml

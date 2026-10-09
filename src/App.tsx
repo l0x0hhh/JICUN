@@ -6,12 +6,9 @@ import { motion, useReducedMotion, useScroll, useSpring, useTransform, type Moti
 import { useEffect, useRef, useState } from 'react'
 import { dict, type Copy, type Lang } from './i18n'
 
-// DOWNLOAD_URL 指向落地页自己托管的 APK（同源，不跳任何外站）。
-// 为什么不用 Gitee 直链：Gitee 附件 CDN 返回 Content-Type: application/zip，
-// 安卓浏览器会据此把文件存成 .zip；且手机端还会多一个中转页。
-// 自托管 + netlify.toml 里声明 application/vnd.android.package-archive 才能保证下载到 .apk。
-// 发新版只需用新包覆盖 public/downloads/jicun.apk，这个常量不用改。
-const DOWNLOAD_URL = '/downloads/jicun.apk'
+// 跟随构建基路径：兼容 Pages 的 /JICUN/ 和 Netlify 的根目录，同源下载保留 APK 文件名。
+const DOWNLOAD_URL = `${import.meta.env.BASE_URL}downloads/jicun.apk`
+const LOGO_URL = `${import.meta.env.BASE_URL}logo.png`
 const REPO_URL = 'https://github.com/l0x0hhh/zongce'
 const README_URL = 'https://github.com/l0x0hhh/zongce/blob/main/README.md'
 const LICENSE_URL = 'https://github.com/l0x0hhh/zongce/blob/main/LICENSE'
@@ -44,7 +41,7 @@ function initialLang(): Lang {
 
 function Brand({ compact = false }: { compact?: boolean }) {
   return <a className={`brand ${compact ? 'brand-compact' : ''}`} href="#top" aria-label="暨存首页">
-    <img src="/logo.png" alt="" />
+    <img src={LOGO_URL} alt="" />
     <span>暨存</span>
   </a>
 }
@@ -174,7 +171,7 @@ function App() {
       </nav>
       <div className="header-actions">
         <LangToggle lang={lang} onChange={switchLang} label={t.a11y.langToggle} />
-        <a className="header-download" href={DOWNLOAD_URL} target="_blank" rel="noreferrer"><Download size={15} /> {t.headerCta}</a>
+        <a className="header-download" href={DOWNLOAD_URL} download="jicun.apk" target="_blank" rel="noreferrer"><Download size={15} /> {t.headerCta}</a>
       </div>
       <button className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? t.a11y.menuClose : t.a11y.menuOpen}>{menuOpen ? <X size={20} /> : <Menu size={20} />}</button>
     </header>
@@ -187,13 +184,13 @@ function App() {
         <motion.div className="hero-copy" initial={{ opacity: 0, x: -28 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, ease: EASE }}>
           <h1>{t.hero.h1a}<br /><span>{t.hero.h1b}</span></h1>
           <p>{t.hero.p1}<br />{t.hero.p2}</p>
-          <div className="hero-actions"><a className="button button-primary" href={DOWNLOAD_URL} target="_blank" rel="noreferrer"><Download size={16} /> {t.hero.cta}</a><a className="text-link" href="#features">{t.hero.more} <ArrowRight size={15} /></a></div>
+          <div className="hero-actions"><a className="button button-primary" href={DOWNLOAD_URL} download="jicun.apk" target="_blank" rel="noreferrer"><Download size={16} /> {t.hero.cta}</a><a className="text-link" href="#features">{t.hero.more} <ArrowRight size={15} /></a></div>
           <small className="platform-note">{t.hero.note}</small>
         </motion.div>
         <motion.div className="hero-visual" initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16, duration: 1, ease: EASE }}>
           <motion.div className="hero-orb" style={{ y: pv(orbY) }} />
           <motion.div className="hero-label" style={{ y: pv(labelY), rotate: -90 }}>{t.hero.labelTop}<br /><span>{t.hero.labelSub}</span></motion.div>
-          <motion.div className="hero-logo-glow" style={{ y: pv(glowY), rotate: 9 }}><img src="/logo.png" alt="" /></motion.div>
+          <motion.div className="hero-logo-glow" style={{ y: pv(glowY), rotate: 9 }}><img src={LOGO_URL} alt="" /></motion.div>
           <PhoneMockup variant="home" parallaxY={pv(heroPhoneY)} rotate={4} t={t.phone} />
         </motion.div>
       </section>
@@ -257,7 +254,7 @@ function App() {
         <motion.div className="shell download-inner" {...reveal()}>
           <h2>{t.download.h2a}<br /><em>{t.download.h2b}</em></h2>
           <p>{t.download.p}</p>
-          <a className="button button-dark" href={DOWNLOAD_URL} target="_blank" rel="noreferrer"><Download size={16} /> {t.download.cta}</a>
+          <a className="button button-dark" href={DOWNLOAD_URL} download="jicun.apk" target="_blank" rel="noreferrer"><Download size={16} /> {t.download.cta}</a>
           <small>{t.download.note}</small>
         </motion.div>
       </section>
@@ -267,7 +264,7 @@ function App() {
       <div className="shell footer-inner">
         <div className="footer-top">
           <a className="footer-brand" href="#top" aria-label={t.a11y.railTop}>
-            <img src="/logo.png" alt="" />
+            <img src={LOGO_URL} alt="" />
             <span>暨存 JICUN</span>
           </a>
           <nav className="footer-links" aria-label="Links">
@@ -275,7 +272,7 @@ function App() {
             <a href={README_URL} target="_blank" rel="noreferrer">{t.footer.readme}</a>
             <a href="#privacy">{t.footer.privacy}</a>
             <a href={LICENSE_URL} target="_blank" rel="noreferrer">{t.footer.license}</a>
-            <a href={DOWNLOAD_URL} target="_blank" rel="noreferrer">{t.footer.download}</a>
+            <a href={DOWNLOAD_URL} download="jicun.apk" target="_blank" rel="noreferrer">{t.footer.download}</a>
           </nav>
         </div>
         <p className="footer-note">{t.footer.note}</p>

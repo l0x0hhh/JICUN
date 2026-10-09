@@ -15,9 +15,7 @@
 # 它们会被跳过、tsc 找不到，构建直接失败。
 
 # 单页站点，没有客户端路由，因此不需要 SPA 重定向规则（_redirects / [[redirects]]）。
-# 页面对 /logo.png、/fonts/*、/favicon* 用的是绝对路径：
-#   部署在域名根（xxx.netlify.app 或自定义域名）无需任何配置；
-#   若要部署到子路径，需要给 vite.config.ts 加 base，否则这些路径会 404。
+# 根目录部署使用默认 base；Pages 工作流单独传入子路径，资源引用跟随 Vite 基路径。
 
 # Vite 产出的 /assets/* 文件名带内容哈希，可以放心长期缓存。
 [[headers]]
@@ -26,7 +24,7 @@
     Cache-Control = "public, max-age=31536000, immutable"
 
 # APK 下载：必须声明正确的 MIME，否则安卓浏览器只认 Content-Type、会把 .apk 存成 .zip。
-# （Gitee 的附件 CDN 返回 application/zip，这正是不能拿它当下载源的原因。）
+# 第三方附件 CDN 的 MIME 与下载文件名可能不同，需要在目标浏览器分别实测。
 # Content-Type 不在 Netlify 禁止覆盖的响应头名单里，可以这样强制指定。
 [[headers]]
   for = "/downloads/*.apk"
