@@ -1,6 +1,8 @@
 {
   "version": "1.5.7",
-  "title": "暨存 1.5.7",
+  "title": "暨存 v1.5.7",
   "notes": "- 快速录入 PNG 预览移除旧版标题和应用图标，按现有组件还原拍照、相册按钮的尺寸与布局。\n- 我的成果补齐 PNG 预览与 `previewImage` 配置，兼容不渲染 `previewLayout` 的「原子组件」选择器；展示学年、示例成果与底部统计入口。\n- 新增 `tools/gen_widget_previews.py`，从组件色板读取颜色并生成两张预览；使用固定示例内容，不访问用户数据。\n- 只更新选择器预览，桌面组件的点击、学年切换与数据刷新逻辑保持原有行为。\n- 验证状态：`:app:assembleDebug --no-daemon --offline` 通过；两张 PNG 的尺寸、透明圆角和资源引用检查通过，APK 内图片像素与源文件一致，编译后的成果配置同时包含 `previewImage` 和 `previewLayout`。\n- 发布前将默认版本改为 `1.5.7`，重新构建并运行 `:app:testDebugUnitTest`，现有 102 项单元测试全部通过。\n- 目标手机选择器的显示效果仍需用正式签名的新包覆盖安装后人工验收。\n\n完整变更记录：https://github.com/l0x0hhh/zongce/blob/main/VERSION_HISTORY.md\n",
-  "apkUrl": "https://l0x0hhh.github.io/JICUN/downloads/jicun.apk"
+  "apkUrl": "https://jicun.netlify.app/downloads/jicun.apk",
+  "sha256": "cbf5ed3316bb126b0ea509857e7eb3c7544262276abdf9cdf19d44062a2a108d",
+  "size": 13832996
 }
