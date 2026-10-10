@@ -1,6 +1,6 @@
 {
-  "version": "1.5.6",
-  "title": "暨存 1.5.6",
-  "notes": "- 桌面成果组件点击学年即可展开列表，直接选中目标学年后收起；标明已选学年，多个组件分别保存选择。\n- 移除点击后的额外延迟，修复状态改变后画面仍显示旧内容的问题；保存、编辑和删除成果后更新桌面内容。\n- “查看全部”进入组件当前学年的成果页，兼容 App 冷启动和已经打开的页面；成果行继续打开对应记录。\n- 标题与底部入口扩大为 48dp 点击区域，统计和查看全部合并，给小尺寸组件留出列表空间；修复系统选择器预览加载问题。\n- 增加 Gitee 备用更新源支持，官网使用 GitHub Pages；正式包、备用源和官网下载分别校验交付结果。\n\n完整变更记录：https://github.com/l0x0hhh/zongce/blob/main/VERSION_HISTORY.md\n",
+  "version": "1.5.7",
+  "title": "暨存 1.5.7",
+  "notes": "- 快速录入 PNG 预览移除旧版标题和应用图标，按现有组件还原拍照、相册按钮的尺寸与布局。\n- 我的成果补齐 PNG 预览与 `previewImage` 配置，兼容不渲染 `previewLayout` 的「原子组件」选择器；展示学年、示例成果与底部统计入口。\n- 新增 `tools/gen_widget_previews.py`，从组件色板读取颜色并生成两张预览；使用固定示例内容，不访问用户数据。\n- 只更新选择器预览，桌面组件的点击、学年切换与数据刷新逻辑保持原有行为。\n- 验证状态：`:app:assembleDebug --no-daemon --offline` 通过；两张 PNG 的尺寸、透明圆角和资源引用检查通过，APK 内图片像素与源文件一致，编译后的成果配置同时包含 `previewImage` 和 `previewLayout`。\n- 发布前将默认版本改为 `1.5.7`，重新构建并运行 `:app:testDebugUnitTest`，现有 102 项单元测试全部通过。\n- 目标手机选择器的显示效果仍需用正式签名的新包覆盖安装后人工验收。\n\n完整变更记录：https://github.com/l0x0hhh/zongce/blob/main/VERSION_HISTORY.md\n",
   "apkUrl": "https://l0x0hhh.github.io/JICUN/downloads/jicun.apk"
 }
